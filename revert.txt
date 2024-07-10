@@ -1,3 +1,0 @@
-# all changes are gone
-# making a change, then saving
-# making a change, savining, then committing

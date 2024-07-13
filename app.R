@@ -204,15 +204,39 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       uiOutput("investmentUI"),
-      numericInput("sell", "Sell Amount:", value = 0, min = 0),
+      numericInput("sell", "Sell Amount:", value = 0, min = 0, step = 50),
       actionButton("submit", "Submit for this Month"),
-      textOutput("portfolioValue"),
-      textOutput("spyChange"),
-      textOutput("portfolioChange"),
-      textOutput("cashAvailable")
+      textOutput("error")
     ),
     mainPanel(
-      plotOutput("stockPlot")
+      fluidRow(
+        box(
+          title = "SPY Stock Prices",
+          width = 12,
+          plotOutput("stockPlot")
+        )
+      ),
+      fluidRow(
+        box(
+          title = "Portfolio Performance",
+          width = 12,
+          tableOutput("portfolioTable")
+        )
+      ),
+      fluidRow(
+        box(
+          title = "SPY Performance",
+          width = 12,
+          htmlOutput("spyChange")
+        )
+      ),
+      fluidRow(
+        box(
+          title = "Cash Account",
+          width = 12,
+          htmlOutput("cashAvailable")
+        )
+      )
     )
   )
 )
@@ -221,7 +245,7 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # Initialize portfolio
   portfolio <- reactiveVal(data.frame(
-    Month = character(),
+    Month = as.Date(character()),
     Investment = numeric(),
     CumulativeInvestment = numeric(),
     Value = numeric(),
@@ -230,23 +254,37 @@ server <- function(input, output, session) {
     stringsAsFactors = FALSE
   ))
   
+  # Error message
+  error_message <- reactiveVal("")
+  
   # Generate dynamic UI for investment input
   output$investmentUI <- renderUI({
     current_portfolio <- portfolio()
     available_cash <- if (nrow(current_portfolio) == 0) 1000 else tail(current_portfolio$Cash, 1) + 1000
     
-    numericInput("investment", paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), value = 0, min = 0, max = available_cash)
+    numericInput("investment", paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), value = 0, min = 0, max = available_cash, step = 50)
   })
   
   observeEvent(input$submit, {
     current_portfolio <- portfolio()
     current_month <- nrow(current_portfolio) + 1
+    error_message("")
     
     if (current_month <= nrow(spy_data)) {
       investment <- input$investment
       sell_amount <- input$sell
       last_cash <- if (current_month == 1) 1000 else tail(current_portfolio$Cash, 1)
       previous_value <- if (current_month == 1) 0 else tail(current_portfolio$MarketChangeValue, 1)
+      
+      # Check for illegal actions
+      if (investment > last_cash + 1000) {
+        error_message("Error: Investment amount exceeds available cash.")
+        return()
+      }
+      if (sell_amount > previous_value) {
+        error_message("Error: Sell amount exceeds portfolio value.")
+        return()
+      }
       
       # Calculate new cash including the sell amount and interest on previous cash
       new_cash <- (last_cash - investment + sell_amount) * 1.05 + (1000 - investment)
@@ -263,7 +301,7 @@ server <- function(input, output, session) {
       value <- market_change_value
       
       new_entry <- data.frame(
-        Month = as.character(spy_data$month[current_month]),
+        Month = spy_data$month[current_month],
         Investment = investment,
         CumulativeInvestment = cumulative_investment,
         Value = value,
@@ -275,11 +313,16 @@ server <- function(input, output, session) {
     }
   })
   
+  output$error <- renderText({
+    error_message()
+  })
+  
   output$stockPlot <- renderPlot({
     current_portfolio <- portfolio()
     invested_months <- as.Date(current_portfolio$Month)
     
-    spy_data$point_color <- ifelse(spy_data$month %in% tail(invested_months, 1), "red", "grey")
+    spy_data <- spy_data %>%
+      mutate(point_color = ifelse(month %in% tail(invested_months, 1), "red", "grey"))
     
     ggplot(spy_data, aes(x = month, y = close)) +
       geom_line() +
@@ -288,32 +331,35 @@ server <- function(input, output, session) {
       labs(title = "SPY Stock Prices", x = "Date", y = "Price")
   })
   
-  output$portfolioValue <- renderText({
+  output$portfolioTable <- renderTable({
+    req(input$submit)
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) == 0) {
-      return("Portfolio value will be displayed here after the first submission.")
+      return(data.frame("No data available yet."))
     }
     
-    latest_entry <- tail(current_portfolio, 1)
-    paste("Month:", latest_entry$Month, 
-          " | Investment this month:", latest_entry$Investment, 
-          " | Cumulative Investment:", latest_entry$CumulativeInvestment, 
-          " | Portfolio Value:", round(latest_entry$Value, 2))
-  })
+    current_portfolio %>%
+      mutate(
+        Month = format(as.Date(Month), "%Y-%m"),
+        Investment = round(Investment, 2),
+        CumulativeInvestment = round(CumulativeInvestment, 2),
+        Value = round(Value, 2)
+      )
+  }, rownames = FALSE)
   
-  output$spyChange <- renderText({
+  output$spyChange <- renderUI({
     current_portfolio <- portfolio()
     current_month <- nrow(current_portfolio) + 1
     
     if (current_month > 1 && current_month <= nrow(spy_data)) {
       spy_change <- spy_data$perc_change[current_month]
-      paste("SPY % Change from last month:", round(spy_change, 2), "%")
+      HTML(paste("<h4>SPY % Change from last month:</h4>", "<b>", round(spy_change, 2), "%</b>"))
     } else {
-      return("SPY % Change from last month will be displayed here.")
+      HTML("<h4>SPY % Change from last month:</h4> <b>Data will be displayed here.</b>")
     }
   })
   
-  output$portfolioChange <- renderText({
+  output$portfolioChange <- renderUI({
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) > 1) {
       last_market_change_value <- tail(current_portfolio$MarketChangeValue, 1)
@@ -321,22 +367,20 @@ server <- function(input, output, session) {
       portfolio_change_due_to_market <- (last_market_change_value / prev_market_change_value - 1) * 100
       paste("Portfolio % Change due to market conditions:", round(portfolio_change_due_to_market, 2), "%")
     } else {
-      return("Portfolio % Change due to market conditions will be displayed here.")
+      "Portfolio % Change due to market conditions will be displayed here."
     }
   })
   
-  output$cashAvailable <- renderText({
+  output$cashAvailable <- renderUI({
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) == 0) {
-      return("Cash available will be displayed here after the first submission.")
+      HTML("<h4>Cash available for next month:</h4> <b>Data will be displayed here.</b>")
+    } else {
+      latest_entry <- tail(current_portfolio, 1)
+      HTML(paste("<h4>Cash available for next month:</h4>", "<b>$", round(latest_entry$Cash, 2), "</b>"))
     }
-    
-    latest_entry <- tail(current_portfolio, 1)
-    paste("Cash available for next month:", round(latest_entry$Cash, 2))
   })
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
-
-

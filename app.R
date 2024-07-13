@@ -30,20 +30,6 @@ ui <- fluidPage(
     mainPanel(
       fluidRow(
         box(
-          title = "SPY Stock Prices",
-          width = 12,
-          plotOutput("stockPlot")
-        )
-      ),
-      fluidRow(
-        box(
-          title = "Portfolio Performance",
-          width = 12,
-          tableOutput("portfolioTable")
-        )
-      ),
-      fluidRow(
-        box(
           title = "SPY Performance",
           width = 12,
           htmlOutput("spyChange")
@@ -54,6 +40,21 @@ ui <- fluidPage(
           title = "Cash Account",
           width = 12,
           htmlOutput("cashAvailable")
+        )
+      ),
+      fluidRow(
+        box(
+          title = "SPY Stock Prices",
+          width = 12,
+          plotOutput("stockPlot")
+        )
+      ),
+
+      fluidRow(
+        box(
+          title = "Portfolio Performance",
+          width = 12,
+          tableOutput("portfolioTable")
         )
       )
     )

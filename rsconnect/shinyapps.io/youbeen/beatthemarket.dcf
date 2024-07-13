@@ -5,6 +5,6 @@ account: youbeen
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 12303136
-bundleId: 8860663
+bundleId: 8860688
 url: https://youbeen.shinyapps.io/beatthemarket/
 version: 1

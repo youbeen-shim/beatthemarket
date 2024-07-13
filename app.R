@@ -29,32 +29,27 @@ ui <- fluidPage(
     ),
     mainPanel(
       fluidRow(
-        box(
-          title = "SPY Performance",
-          width = 12,
-          htmlOutput("spyChange")
+        column(12,
+               h3("SPY Performance"),
+               htmlOutput("spyChange")
         )
       ),
       fluidRow(
-        box(
-          title = "Cash Account",
-          width = 12,
-          htmlOutput("cashAvailable")
+        column(12,
+               h3("Cash Account"),
+               htmlOutput("cashAvailable")
         )
       ),
       fluidRow(
-        box(
-          title = "SPY Stock Prices",
-          width = 12,
-          plotOutput("stockPlot")
+        column(12,
+               h3("SPY Stock Prices"),
+               plotOutput("stockPlot")
         )
       ),
-
       fluidRow(
-        box(
-          title = "Portfolio Performance",
-          width = 12,
-          tableOutput("portfolioTable")
+        column(12,
+               h3("Portfolio Performance"),
+               tableOutput("portfolioTable")
         )
       )
     )
@@ -86,7 +81,7 @@ server <- function(input, output, session) {
     
     numericInput("investment", 
                  paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), 
-                 value = 500, min = 0, max = available_cash, step = 50)
+                 value = 0, min = 0, max = available_cash, step = 50)
   })
   
   observeEvent(input$submit, {
@@ -160,7 +155,7 @@ server <- function(input, output, session) {
   })
   
   output$portfolioTable <- renderTable({
-    
+    req(input$submit)
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) == 0) {
       return(data.frame("No data available yet."))

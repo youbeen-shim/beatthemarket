@@ -23,7 +23,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       uiOutput("investmentUI"),
-      numericInput("sell", "Sell Amount:", value = 0, min = 0, step = 50),
+      numericInput("sell", "Sell Amount:", value = 0, min = 0),
       actionButton("submit", "Submit for this Month"),
       textOutput("error")
     ),
@@ -70,6 +70,8 @@ server <- function(input, output, session) {
     Value = numeric(),
     MarketChangeValue = numeric(),
     Cash = numeric(),
+    InterestAdjustedCash = numeric(),
+    AmountAvailableForInvestment = numeric(),
     stringsAsFactors = FALSE
   ))
   
@@ -79,9 +81,11 @@ server <- function(input, output, session) {
   # Generate dynamic UI for investment input
   output$investmentUI <- renderUI({
     current_portfolio <- portfolio()
-    available_cash <- if (nrow(current_portfolio) == 0) 1000 else tail(current_portfolio$Cash, 1) + 1000
+    available_cash <- if (nrow(current_portfolio) == 0) 1000 else tail(current_portfolio$AmountAvailableForInvestment, 1)
     
-    numericInput("investment", paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), value = 0, min = 0, max = available_cash, step = 50)
+    numericInput("investment", 
+                 paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), 
+                 value = 500, min = 0, max = available_cash, step = 50)
   })
   
   observeEvent(input$submit, {
@@ -92,11 +96,11 @@ server <- function(input, output, session) {
     if (current_month <= nrow(spy_data)) {
       investment <- input$investment
       sell_amount <- input$sell
-      last_cash <- if (current_month == 1) 1000 else tail(current_portfolio$Cash, 1)
+      last_cash <- if (current_month == 1) 1000 else tail(current_portfolio$AmountAvailableForInvestment, 1)
       previous_value <- if (current_month == 1) 0 else tail(current_portfolio$MarketChangeValue, 1)
       
       # Check for illegal actions
-      if (investment > last_cash + 1000) {
+      if (investment > last_cash) {
         error_message("Error: Investment amount exceeds available cash.")
         return()
       }
@@ -105,8 +109,10 @@ server <- function(input, output, session) {
         return()
       }
       
-      # Calculate new cash including the sell amount and interest on previous cash
-      new_cash <- (last_cash - investment + sell_amount) * 1.05 + (1000 - investment)
+      # Calculate cash, interest adjusted cash, and amount available for investment
+      cash <- last_cash - investment + sell_amount
+      interest_adjusted_cash <- cash * 1.05
+      amount_available_for_investment <- interest_adjusted_cash + 1000
       
       cumulative_investment <- sum(current_portfolio$Investment) + investment
       
@@ -125,7 +131,9 @@ server <- function(input, output, session) {
         CumulativeInvestment = cumulative_investment,
         Value = value,
         MarketChangeValue = market_change_value,
-        Cash = new_cash,
+        Cash = cash,
+        InterestAdjustedCash = interest_adjusted_cash,
+        AmountAvailableForInvestment = amount_available_for_investment,
         stringsAsFactors = FALSE
       )
       portfolio(rbind(current_portfolio, new_entry))
@@ -152,6 +160,7 @@ server <- function(input, output, session) {
   
   output$portfolioTable <- renderTable({
     req(input$submit)
+    
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) == 0) {
       return(data.frame("No data available yet."))
@@ -162,7 +171,10 @@ server <- function(input, output, session) {
         Month = format(as.Date(Month), "%Y-%m"),
         Investment = round(Investment, 2),
         CumulativeInvestment = round(CumulativeInvestment, 2),
-        Value = round(Value, 2)
+        Value = round(Value, 2),
+        Cash = round(Cash, 2),
+        InterestAdjustedCash = round(InterestAdjustedCash, 2),
+        AmountAvailableForInvestment = round(AmountAvailableForInvestment, 2)
       )
   }, rownames = FALSE)
   
@@ -196,7 +208,7 @@ server <- function(input, output, session) {
       HTML("<h4>Cash available for next month:</h4> <b>Data will be displayed here.</b>")
     } else {
       latest_entry <- tail(current_portfolio, 1)
-      HTML(paste("<h4>Cash available for next month:</h4>", "<b>$", round(latest_entry$Cash, 2), "</b>"))
+      HTML(paste("<h4>Cash available for next month:</h4>", "<b>$", round(latest_entry$AmountAvailableForInvestment, 2), "</b>"))
     }
   })
 }

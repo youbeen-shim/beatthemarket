@@ -160,7 +160,6 @@ server <- function(input, output, session) {
   })
   
   output$portfolioTable <- renderTable({
-    req(input$submit)
     
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) == 0) {

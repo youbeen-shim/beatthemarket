@@ -55,6 +55,12 @@ ui <- fluidPage(
                h3("Investment and Cash Account Values Over Time"),
                plotOutput("accountPlot")
         )
+      ),
+      fluidRow(
+        column(12,
+               h3("Game Summary"),
+               htmlOutput("summary")
+        )
       )
     )
   )
@@ -156,12 +162,35 @@ server <- function(input, output, session) {
         stringsAsFactors = FALSE
       )
       portfolio(rbind(current_portfolio, new_entry))
+      
+      # Display the summary when the last month is reached
+      if (current_month == nrow(spy_data)) {
+        total_income <- (current_month - 1) * 1000
+        starting_amount <- 10000
+        ending_amount <- value + cash
+        account_growth <- (ending_amount - starting_amount) / starting_amount * 100
+        raw_investment_growth <- (ending_amount - total_income - starting_amount) / starting_amount * 100
+        summary_text <- paste(
+          "<h4>Summary</h4>",
+          "<p><b>Starting Amount:</b> $10,000</p>",
+          "<p><b>Total Income:</b> $", total_income, "</p>",
+          "<p><b>Ending Amount:</b> $", round(ending_amount, 2), "</p>",
+          "<p><b>Account Growth (%):</b> ", round(account_growth, 2), "%</p>",
+          "<p><b>Account Growth (Raw Investment %):</b> ", round(raw_investment_growth, 2), "%</p>"
+        )
+        output$summary <- renderUI({
+          HTML(summary_text)
+        })
+      }
     }
   })
   
   observeEvent(input$reset, {
     portfolio(initial_portfolio)
     error_message("")
+    output$summary <- renderUI({
+      HTML("<p>Game reset. Start a new game by making investments.</p>")
+    })
   })
   
   output$error <- renderText({
@@ -241,4 +270,5 @@ server <- function(input, output, session) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
 

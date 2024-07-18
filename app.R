@@ -3,6 +3,7 @@ library(quantmod)
 library(dplyr)
 library(ggplot2)
 library(lubridate)
+library(tidyr)
 
 # Fetch SPY stock prices for the last 24 months
 start_date <- Sys.Date() - months(24)
@@ -256,8 +257,9 @@ server <- function(input, output, session) {
     current_portfolio <- portfolio()
     if (nrow(current_portfolio) > 0) {
       account_data <- current_portfolio %>%
-        select(Month, Cash, Investment = MarketChangeValue) %>%
-        gather(key = "AccountType", value = "Amount", -Month)
+        mutate(Total = Cash + MarketChangeValue) %>%
+        select(Month, Cash, Investment = MarketChangeValue, Total) %>%
+        pivot_longer(cols = c("Cash", "Investment", "Total"), names_to = "AccountType", values_to = "Amount")
       
       ggplot(account_data, aes(x = Month, y = Amount, color = AccountType)) +
         geom_line(size = 1) +

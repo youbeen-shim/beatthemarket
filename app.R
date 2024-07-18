@@ -25,6 +25,8 @@ ui <- fluidPage(
       uiOutput("investmentUI"),
       numericInput("sell", "Sell Amount:", value = 0, min = 0),
       actionButton("submit", "Submit for this Month"),
+      tags$hr(),
+      actionButton("reset", "Reset Game"),
       textOutput("error"),
       tags$hr(),
       h3("SPY Performance"),
@@ -128,6 +130,21 @@ server <- function(input, output, session) {
       )
       portfolio(rbind(current_portfolio, new_entry))
     }
+  })
+  
+  observeEvent(input$reset, {
+    portfolio(data.frame(
+      Month = as.Date(character()),
+      Investment = numeric(),
+      CumulativeInvestment = numeric(),
+      Value = numeric(),
+      MarketChangeValue = numeric(),
+      Cash = numeric(),
+      InterestAdjustedCash = numeric(),
+      AmountAvailableForInvestment = numeric(),
+      stringsAsFactors = FALSE
+    ))
+    error_message("")
   })
   
   output$error <- renderText({

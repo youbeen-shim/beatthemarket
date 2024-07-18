@@ -25,17 +25,18 @@ ui <- fluidPage(
     sidebarPanel(
       uiOutput("investmentUI"),
       numericInput("sell", "Sell Amount:", value = 0, min = 0),
-      actionButton("submit", "Submit for this Month"),
-      tags$hr(),
+      actionButton("submit", "Submit this Month's Order"),
+      tags$hr(style = "border: 0; border-top: 3px double #8c8c8c; margin: 20px 0;"),
       actionButton("reset", "Reset Game"),
+      actionButton("end", "End Game"),
       textOutput("error"),
-      tags$hr(),
+      tags$hr(style = "border: 0; border-top: 3px double #8c8c8c; margin: 20px 0;"),
       h3("SPY Performance"),
       htmlOutput("spyChange"),
-      tags$hr(),
+      tags$hr(style = "border: 0; border-top: 3px double #8c8c8c; margin: 20px 0;"),
       h3("Cash Account"),
       htmlOutput("cashAvailable")
-    ),
+  ),
     mainPanel(
       fluidRow(
         column(12,
@@ -183,6 +184,33 @@ server <- function(input, output, session) {
           HTML(summary_text)
         })
       }
+    }
+  })
+  
+  observeEvent(input$end, {
+    current_portfolio <- portfolio()
+    current_month <- nrow(current_portfolio)
+    
+    if (current_month > 0) {
+      total_income <- (current_month - 1) * 1000
+      starting_amount <- 10000
+      latest_entry <- tail(current_portfolio, 1)
+      ending_amount <- latest_entry$MarketChangeValue + latest_entry$Cash
+      account_growth <- (ending_amount - starting_amount) / starting_amount * 100
+      raw_investment_growth <- (ending_amount - total_income - starting_amount) / starting_amount * 100
+      
+      summary_text <- paste(
+        "<h4>Summary</h4>",
+        "<p><b>Starting Amount:</b> $10,000</p>",
+        "<p><b>Total Income:</b> $", total_income, "</p>",
+        "<p><b>Ending Amount:</b> $", round(ending_amount, 2), "</p>",
+        "<p><b>Account Growth (%):</b> ", round(account_growth, 2), "%</p>",
+        "<p><b>Account Growth (Raw Investment %):</b> ", round(raw_investment_growth, 2), "%</p>"
+      )
+      
+      output$summary <- renderUI({
+        HTML(summary_text)
+      })
     }
   })
   

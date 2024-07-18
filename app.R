@@ -49,6 +49,12 @@ ui <- fluidPage(
                h3("Portfolio Performance"),
                tableOutput("portfolioTable")
         )
+      ),
+      fluidRow(
+        column(12,
+               h3("Investment and Cash Account Values Over Time"),
+               plotOutput("accountPlot")
+        )
       )
     )
   )
@@ -216,7 +222,23 @@ server <- function(input, output, session) {
       HTML(paste("<h4>Cash available for next month:</h4>", "<b>$", round(latest_entry$AmountAvailableForInvestment, 2), "</b>"))
     }
   })
+  
+  output$accountPlot <- renderPlot({
+    current_portfolio <- portfolio()
+    if (nrow(current_portfolio) > 0) {
+      account_data <- current_portfolio %>%
+        select(Month, Cash, Investment = MarketChangeValue) %>%
+        gather(key = "AccountType", value = "Amount", -Month)
+      
+      ggplot(account_data, aes(x = Month, y = Amount, color = AccountType)) +
+        geom_line(size = 1) +
+        geom_point(size = 2) +
+        labs(title = "Investment and Cash Account Values Over Time", x = "Month", y = "Amount ($)", color = "Account Type") +
+        scale_y_continuous(labels = scales::dollar)
+    }
+  })
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+

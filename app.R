@@ -25,21 +25,15 @@ ui <- fluidPage(
       uiOutput("investmentUI"),
       numericInput("sell", "Sell Amount:", value = 0, min = 0),
       actionButton("submit", "Submit for this Month"),
-      textOutput("error")
+      textOutput("error"),
+      tags$hr(),
+      h3("SPY Performance"),
+      htmlOutput("spyChange"),
+      tags$hr(),
+      h3("Cash Account"),
+      htmlOutput("cashAvailable")
     ),
     mainPanel(
-      fluidRow(
-        column(12,
-               h3("SPY Performance"),
-               htmlOutput("spyChange")
-        )
-      ),
-      fluidRow(
-        column(12,
-               h3("Cash Account"),
-               htmlOutput("cashAvailable")
-        )
-      ),
       fluidRow(
         column(12,
                h3("SPY Stock Prices"),
@@ -182,18 +176,6 @@ server <- function(input, output, session) {
       HTML(paste("<h4>SPY % Change from last month:</h4>", "<b>", round(spy_change, 2), "%</b>"))
     } else {
       HTML("<h4>SPY % Change from last month:</h4> <b>Data will be displayed here.</b>")
-    }
-  })
-  
-  output$portfolioChange <- renderUI({
-    current_portfolio <- portfolio()
-    if (nrow(current_portfolio) > 1) {
-      last_market_change_value <- tail(current_portfolio$MarketChangeValue, 1)
-      prev_market_change_value <- current_portfolio$MarketChangeValue[nrow(current_portfolio) - 1]
-      portfolio_change_due_to_market <- (last_market_change_value / prev_market_change_value - 1) * 100
-      paste("Portfolio % Change due to market conditions:", round(portfolio_change_due_to_market, 2), "%")
-    } else {
-      "Portfolio % Change due to market conditions will be displayed here."
     }
   })
   

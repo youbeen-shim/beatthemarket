@@ -38,6 +38,8 @@ ui <- fluidPage(
     mainPanel(
       fluidRow(
         column(12,
+               h4("Initial Circumstance"),
+               HTML("<p>You start with $7,500 in your investment account and $2,500 in your cash account. You will receive $1,000 each month.</p>"),
                h3("SPY Stock Prices"),
                plotOutput("stockPlot")
         )
@@ -54,16 +56,16 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
-  # Initialize portfolio
+  # Initialize portfolio with $7,500 investment and $2,500 cash
   portfolio <- reactiveVal(data.frame(
     Month = as.Date(character()),
-    Investment = numeric(),
-    CumulativeInvestment = numeric(),
-    Value = numeric(),
-    MarketChangeValue = numeric(),
-    Cash = numeric(),
-    InterestAdjustedCash = numeric(),
-    AmountAvailableForInvestment = numeric(),
+    Investment = 7500,
+    CumulativeInvestment = 7500,
+    Value = 7500,
+    MarketChangeValue = 7500,
+    Cash = 2500,
+    InterestAdjustedCash = 2500 * 1.05,
+    AmountAvailableForInvestment = 2500 * 1.05 + 1000,
     stringsAsFactors = FALSE
   ))
   
@@ -73,7 +75,7 @@ server <- function(input, output, session) {
   # Generate dynamic UI for investment input
   output$investmentUI <- renderUI({
     current_portfolio <- portfolio()
-    available_cash <- if (nrow(current_portfolio) == 0) 1000 else tail(current_portfolio$AmountAvailableForInvestment, 1)
+    available_cash <- if (nrow(current_portfolio) == 0) 2500 else tail(current_portfolio$AmountAvailableForInvestment, 1)
     
     numericInput("investment", 
                  paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), 
@@ -88,8 +90,8 @@ server <- function(input, output, session) {
     if (current_month <= nrow(spy_data)) {
       investment <- input$investment
       sell_amount <- input$sell
-      last_cash <- if (current_month == 1) 1000 else tail(current_portfolio$AmountAvailableForInvestment, 1)
-      previous_value <- if (current_month == 1) 0 else tail(current_portfolio$MarketChangeValue, 1)
+      last_cash <- if (current_month == 1) 2500 else tail(current_portfolio$AmountAvailableForInvestment, 1)
+      previous_value <- if (current_month == 1) 7500 else tail(current_portfolio$MarketChangeValue, 1)
       
       # Check for illegal actions
       if (investment > last_cash) {
@@ -109,7 +111,7 @@ server <- function(input, output, session) {
       cumulative_investment <- sum(current_portfolio$Investment) + investment
       
       if (current_month == 1) {
-        market_change_value <- investment - sell_amount
+        market_change_value <- investment - sell_amount + 7500
       } else {
         change <- spy_data$close[current_month] / spy_data$close[current_month - 1]
         market_change_value <- (previous_value - sell_amount) * change + investment
@@ -135,13 +137,13 @@ server <- function(input, output, session) {
   observeEvent(input$reset, {
     portfolio(data.frame(
       Month = as.Date(character()),
-      Investment = numeric(),
-      CumulativeInvestment = numeric(),
-      Value = numeric(),
-      MarketChangeValue = numeric(),
-      Cash = numeric(),
-      InterestAdjustedCash = numeric(),
-      AmountAvailableForInvestment = numeric(),
+      Investment = 7500,
+      CumulativeInvestment = 7500,
+      Value = 7500,
+      MarketChangeValue = 7500,
+      Cash = 2500,
+      InterestAdjustedCash = 2500 * 1.05,
+      AmountAvailableForInvestment = 2500 * 1.05 + 1000,
       stringsAsFactors = FALSE
     ))
     error_message("")

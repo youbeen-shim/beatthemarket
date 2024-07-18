@@ -56,18 +56,19 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
-  # Initialize portfolio with $7,500 investment and $2,500 cash
-  portfolio <- reactiveVal(data.frame(
+  # Initialize portfolio with empty data frame
+  initial_portfolio <- data.frame(
     Month = as.Date(character()),
-    Investment = 7500,
-    CumulativeInvestment = 7500,
-    Value = 7500,
-    MarketChangeValue = 7500,
-    Cash = 2500,
-    InterestAdjustedCash = 2500 * 1.05,
-    AmountAvailableForInvestment = 2500 * 1.05 + 1000,
+    Investment = numeric(),
+    CumulativeInvestment = numeric(),
+    Value = numeric(),
+    MarketChangeValue = numeric(),
+    Cash = numeric(),
+    InterestAdjustedCash = numeric(),
+    AmountAvailableForInvestment = numeric(),
     stringsAsFactors = FALSE
-  ))
+  )
+  portfolio <- reactiveVal(initial_portfolio)
   
   # Error message
   error_message <- reactiveVal("")
@@ -86,6 +87,24 @@ server <- function(input, output, session) {
     current_portfolio <- portfolio()
     current_month <- nrow(current_portfolio) + 1
     error_message("")
+    
+    # Check if this is the first month and initialize the portfolio
+    if (current_month == 1) {
+      new_entry <- data.frame(
+        Month = spy_data$month[current_month],
+        Investment = 7500,
+        CumulativeInvestment = 7500,
+        Value = 7500,
+        MarketChangeValue = 7500,
+        Cash = 2500,
+        InterestAdjustedCash = 2500 * 1.05,
+        AmountAvailableForInvestment = 2500 * 1.05 + 1000,
+        stringsAsFactors = FALSE
+      )
+      portfolio(rbind(current_portfolio, new_entry))
+      current_portfolio <- portfolio()
+      current_month <- nrow(current_portfolio) + 1
+    }
     
     if (current_month <= nrow(spy_data)) {
       investment <- input$investment
@@ -135,17 +154,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$reset, {
-    portfolio(data.frame(
-      Month = as.Date(character()),
-      Investment = 7500,
-      CumulativeInvestment = 7500,
-      Value = 7500,
-      MarketChangeValue = 7500,
-      Cash = 2500,
-      InterestAdjustedCash = 2500 * 1.05,
-      AmountAvailableForInvestment = 2500 * 1.05 + 1000,
-      stringsAsFactors = FALSE
-    ))
+    portfolio(initial_portfolio)
     error_message("")
   })
   

@@ -40,8 +40,19 @@ ui <- fluidPage(
     mainPanel(
       fluidRow(
         column(12,
-               h4("Initial Circumstance"),
-               HTML("<p>You start with $7,500 in your investment account and $2,500 in your cash account. You will receive $1,000 each month.</p>"),
+               h2("Can you beat the market?"),
+               h3("Before we begin.."),
+               HTML("<p>Let's travel back in time, after grinding at your job, you managed to save up $10,000. It is a no small feat. After hitting this milestone, you
+                     wonder - is there a better way to save up for the future? You ask your parents, you ask Google, you ask your finance-saavy friends, you even consider
+                     hiring a financial advisor. After everything, you decide that simple is best: You will open up an investing account and decide to invest some amount 
+                     into a popular index, S&P500. <p>"),
+               HTML("<p>Leaving $2,500 in your cash account, you decide to invest the remaining $7,500 into your investment account which invests everything into SPY (which
+                     tracks the S&P 500 index).<p>"),
+               HTML("<p>Additionally, each month going forward, you will receive $1,000 to allocate freely between your investment and cash account.</p>"),
+               h3("How to Play"),
+               HTML("<p>1. Each month, you can invest $1,000 (your \"income\") + however much is in your cash accoun.t<p>"),
+               HTML("<p>2. Any amount that has not been invested is rolled over to your cash account and collects a 5% interest.<p>"),
+               HTML("<p>3. On any month, for any reason (for example, you expect the market to go down), you can instead to sell up to your current investment account value.<p>"),
                h3("SPY Stock Prices"),
                plotOutput("stockPlot")
         )

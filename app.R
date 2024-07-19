@@ -22,7 +22,7 @@ spy_data <- spy_data %>%
 showSummaryModal <- function(total_income, starting_amount, ending_amount, account_growth, raw_investment_growth) {
   summary_text <- paste(
     "<h4>Summary</h4>",
-    "<p><b>Starting Amount:</b> $10,000</p>",
+    "<p><b>Starting Amount:</b> $10000</p>",
     "<p><b>Total Income:</b> $", total_income, "</p>",
     "<p><b>Ending Amount:</b> $", round(ending_amount, 2), "</p>",
     "<p><b>Account Growth (%):</b> ", round(account_growth, 2), "%</p>",
@@ -42,7 +42,7 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       uiOutput("investmentUI"),
-      numericInput("sell", "Sell Amount:", value = 0, min = 0),
+      # numericInput("sell", "Sell Amount:", value = 0, min = 0),
       actionButton("submit", "Submit this Month's Order"),
       tags$hr(style = "border: 0; border-top: 3px double #8c8c8c; margin: 20px 0;"),
       actionButton("reset", "Reset Game"),
@@ -117,17 +117,24 @@ server <- function(input, output, session) {
     if (nrow(current_portfolio) == 0) {
       available_cash <- 2500
       income <- 1000
+      sell_amount <- 7500
     } else {
       latest_entry <- tail(current_portfolio, 1)
       available_cash <- latest_entry$Cash
       income <- 1000
+      sell_amount <- latest_entry$MarketChangeValue
     }
     
     total_available <- available_cash + income
     
-    numericInput("investment", 
-                 paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""), 
-                 value = 0, min = 0, max = total_available, step = 50)
+    tagList(
+      numericInput("investment", 
+                   paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""), 
+                   value = 0, min = 0, max = total_available, step = 50),
+      numericInput("sell", 
+                   paste("Sell Amount (available: $", round(sell_amount, 2), "):", sep = ""), 
+                   value = 0, min = 0, max = sell_amount, step = 50)
+    )
   })
   
   observeEvent(input$submit, {
@@ -135,7 +142,6 @@ server <- function(input, output, session) {
     current_month <- nrow(current_portfolio) + 1
     error_message("")
     
-    # Check if this is the first month and initialize the portfolio
     if (current_month == 1) {
       new_entry <- data.frame(
         Month = spy_data$month[current_month],
@@ -159,7 +165,6 @@ server <- function(input, output, session) {
       last_cash <- if (current_month == 1) 2500 else tail(current_portfolio$AmountAvailableForInvestment, 1)
       previous_value <- if (current_month == 1) 7500 else tail(current_portfolio$MarketChangeValue, 1)
       
-      # Check for illegal actions
       if (investment > last_cash) {
         error_message("Error: Investment amount exceeds available cash.")
         return()
@@ -169,11 +174,9 @@ server <- function(input, output, session) {
         return()
       }
       
-      # Calculate cash, interest adjusted cash, and amount available for investment
       cash <- last_cash - investment + sell_amount
       interest_adjusted_cash <- cash * 1.05
       amount_available_for_investment <- interest_adjusted_cash + 1000
-      
       cumulative_investment <- sum(current_portfolio$Investment) + investment
       
       if (current_month == 1) {
@@ -198,10 +201,7 @@ server <- function(input, output, session) {
       )
       portfolio(rbind(current_portfolio, new_entry))
       
-      # Reset sell input to 0
-      updateNumericInput(session, "sell", value = 0)
-      
-      # Update investment input to reflect split amount
+      updateNumericInput(session, "sell", value = 0, max = market_change_value)
       latest_entry <- tail(portfolio(), 1)
       available_cash <- latest_entry$Cash
       income <- 1000
@@ -209,7 +209,7 @@ server <- function(input, output, session) {
       updateNumericInput(session, "investment", value = 0, max = total_available, label = paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""))
     }
   })
-  
+
   observeEvent(input$end, {
     current_portfolio <- portfolio()
     current_month <- nrow(current_portfolio)

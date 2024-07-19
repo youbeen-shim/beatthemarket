@@ -60,7 +60,7 @@ ui <- fluidPage(
         column(12,
                h2("Can you beat the market?"),
                h3("Before we begin.."),
-               HTML("<p>Let's travel back in time, after grinding at your job, you managed to save up $10,000. It's no small feat, you should be proud. After hitting this milestone, you
+               HTML("<p>Let's travel back in time, after grinding at your job, you managed to save up $10,000 in cold, hard, cash. (It's no small feat, you should be proud!) After hitting this milestone, you
                      wonder - is there a better way to save up for the future? You ask your parents, you ask Google, you ask your finance-saavy friends, you even consider
                      hiring a financial advisor. After everything, you decide that simple is best: You will open up an investing account and decide to invest some amount 
                      into a popular index, S&P500, every month.<p>"),
@@ -114,11 +114,20 @@ server <- function(input, output, session) {
   # Generate dynamic UI for investment input
   output$investmentUI <- renderUI({
     current_portfolio <- portfolio()
-    available_cash <- if (nrow(current_portfolio) == 0) 2500 else tail(current_portfolio$AmountAvailableForInvestment, 1)
+    if (nrow(current_portfolio) == 0) {
+      available_cash <- 2500
+      income <- 1000
+    } else {
+      latest_entry <- tail(current_portfolio, 1)
+      available_cash <- latest_entry$Cash
+      income <- 1000
+    }
+    
+    total_available <- available_cash + income
     
     numericInput("investment", 
-                 paste("Investment Amount (out of $", round(available_cash, 2), "):", sep = ""), 
-                 value = 0, min = 0, max = available_cash, step = 50)
+                 paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""), 
+                 value = 0, min = 0, max = total_available, step = 50)
   })
   
   observeEvent(input$submit, {
@@ -189,18 +198,17 @@ server <- function(input, output, session) {
       )
       portfolio(rbind(current_portfolio, new_entry))
       
-      # Display the summary when the last month is reached
-      if (current_month == nrow(spy_data)) {
-        total_income <- (current_month - 1) * 1000
-        starting_amount <- 10000
-        ending_amount <- value + cash
-        account_growth <- (ending_amount - starting_amount) / starting_amount * 100
-        raw_investment_growth <- (ending_amount - total_income - starting_amount) / starting_amount * 100
-        showSummaryModal(total_income, starting_amount, ending_amount, account_growth, raw_investment_growth)
-      }
+      # Reset sell input to 0
+      updateNumericInput(session, "sell", value = 0)
+      
+      # Update investment input to reflect split amount
+      latest_entry <- tail(portfolio(), 1)
+      available_cash <- latest_entry$Cash
+      income <- 1000
+      total_available <- available_cash + income
+      updateNumericInput(session, "investment", value = 0, max = total_available, label = paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""))
     }
   })
-  
   
   observeEvent(input$end, {
     current_portfolio <- portfolio()
@@ -215,6 +223,15 @@ server <- function(input, output, session) {
       raw_investment_growth <- (ending_amount - total_income - starting_amount) / starting_amount * 100
       
       showSummaryModal(total_income, starting_amount, ending_amount, account_growth, raw_investment_growth)
+      
+      # Reset sell input to 0
+      updateNumericInput(session, "sell", value = 0)
+      
+      # Update investment input to reflect split amount
+      available_cash <- latest_entry$Cash
+      income <- 1000
+      total_available <- available_cash + income
+      updateNumericInput(session, "investment", value = 0, max = total_available, label = paste("Investment Amount (out of $", round(available_cash, 2), " + $", income, "):", sep = ""))
     }
   })
   
@@ -241,7 +258,8 @@ server <- function(input, output, session) {
       geom_line() +
       geom_point(aes(color = point_color), size = 3) +
       scale_color_identity() +
-      labs(title = "SPY Stock Prices", x = "Date", y = "Price")
+      labs(title = "SPY Stock Prices", x = "Date", y = "Price") +
+      theme_minimal()
   })
   
   output$portfolioTable <- renderTable({
@@ -297,7 +315,8 @@ server <- function(input, output, session) {
         geom_line(size = 1) +
         geom_point(size = 2) +
         labs(title = "Investment and Cash Account Values Over Time", x = "Month", y = "Amount ($)", color = "Account Type") +
-        scale_y_continuous(labels = scales::dollar)
+        scale_y_continuous(labels = scales::dollar) +
+        theme_minimal()
     }
   })
 }
